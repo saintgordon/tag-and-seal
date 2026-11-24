@@ -2,7 +2,7 @@
 
 **100% in-browser, bit-for-bit lossless audio metadata and cover art studio for WAV, MP3, and FLAC.**
 
-**Live App:** https://firewallaby.github.io/tag-and-seal/
+**Live App:** https://saintgordon.github.io/tag-and-seal/
 
 Tag & Seal reads and writes release tags, musical attributes (BPM, Key/Camelot, ISRC), lyrics, and embedded cover artwork straight inside your browser — with **zero audio re-encoding**, zero server uploads, zero build step, and zero runtime dependencies.
 
