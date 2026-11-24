@@ -1,0 +1,820 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Tag & Seal by Saint Gordon Collective — 100% in-browser lossless audio metadata and cover art studio for WAV, MP3, and FLAC. Zero audio re-encoding."
+    />
+    <title>Tag &amp; Seal — Saint Gordon Collective</title>
+    <link rel="icon" href="assets/icons/mark.svg" type="image/svg+xml" />
+    <link
+      rel="preload"
+      href="assets/fonts/OPTIEngraversOldEnglish.woff"
+      as="font"
+      type="font/woff"
+      crossorigin
+    />
+    <link rel="stylesheet" href="app.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to metadata studio</a>
+
+    <!-- Saint Gordon Collective Header -->
+    <header class="site-header">
+      <div class="header-inner">
+        <a
+          class="brand"
+          href="#top"
+          id="brand-home-link"
+          aria-label="Tag and Seal by Saint Gordon Collective"
+        >
+          <img
+            src="assets/icons/mark.svg"
+            alt=""
+            width="36"
+            height="36"
+            class="brand-mark"
+          />
+          <span class="brand-text">
+            <span class="brand-name">Saint Gordon</span>
+            <span class="brand-sub">TAG &amp; SEAL · METADATA &amp; ARTWORK</span>
+          </span>
+        </a>
+
+        <nav class="header-nav" aria-label="Studio status and links">
+          <div class="header-actions">
+            <span class="privacy-badge">
+              <span class="status-dot" aria-hidden="true"></span>
+              <span>100% In-Browser</span>
+            </span>
+            <button
+              type="button"
+              id="btn-header-swap"
+              class="sg-btn sg-btn-outline sg-btn-sm hidden"
+            >
+              Load Another Track
+            </button>
+            <a
+              class="header-ext-link micro"
+              href="https://saintgordon.vercel.app"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Collective ↗
+            </a>
+          </div>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main" class="app-main">
+      <!-- Editorial Masthead -->
+      <div class="hero-meta micro" id="top">
+        <span>TOOL / 004 · LOSSLESS METADATA &amp; ARTWORK STUDIO</span>
+        <span>SAINT GORDON / TAG &amp; SEAL</span>
+      </div>
+
+      <section class="hero-band" id="hero-band" aria-labelledby="page-heading">
+        <div class="hero-title-col">
+          <h1 id="page-heading" class="page-wordmark">
+            Tag &amp; Seal
+            <span>LOSSLESS AUDIO METADATA</span>
+          </h1>
+        </div>
+        <div class="hero-copy-col">
+          <p class="hero-lead">
+            Embed cover art and release credits straight into your master — bit-for-bit lossless, zero re-encoding.
+          </p>
+          <p class="hero-sub">
+            Drop a WAV, MP3, or FLAC to inspect existing headers, press square cover art (with optional
+            Saint Gordon Xerox treatment), edit key track info, and seal cleanly inside your browser.
+            Audio frames and broadcast chunks remain untouched down to the last byte.
+          </p>
+        </div>
+      </section>
+
+      <!-- Hidden File Inputs -->
+      <input
+        type="file"
+        id="audio-file-input"
+        accept=".wav,.mp3,.flac,audio/wav,audio/x-wav,audio/mpeg,audio/flac"
+        class="sr-only"
+      />
+      <input
+        type="file"
+        id="cover-file-input"
+        accept="image/jpeg,image/png,image/webp,image/gif,image/bmp,.jpg,.jpeg,.png,.webp,.gif,.bmp"
+        class="sr-only"
+      />
+
+      <!-- ================= AUDIO DROPZONE (INITIAL STATE) ================= -->
+      <section
+        id="audio-dropzone-section"
+        class="sg-card dropzone-card"
+        role="region"
+        aria-label="Load audio master"
+      >
+        <div class="dropzone-body" id="audio-dropzone-target" tabindex="0" role="button" aria-label="Choose or drop a WAV, MP3, or FLAC audio file">
+          <span class="micro dropzone-kicker">000 / SOURCE MASTER</span>
+          <h2 class="dropzone-heading">Drag &amp; Drop a WAV, MP3, or FLAC Here</h2>
+          <p class="dropzone-formats">
+            Writes universal <code>LIST-INFO</code> + <code>ID3v2.3</code> for WAV, crisp <code>ID3v2.3</code>
+            for MP3, and native <code>VORBIS_COMMENT</code> + <code>PICTURE</code> blocks for FLAC.
+            Your audio never leaves this device.
+          </p>
+
+          <div class="dropzone-buttons">
+            <button type="button" id="btn-select-audio" class="sg-btn sg-btn-ink">
+              Select Audio File
+            </button>
+            <button type="button" id="btn-load-demo" class="sg-btn sg-btn-outline">
+              Load Demo WAV
+            </button>
+          </div>
+        </div>
+
+        <div class="dropzone-toolbar">
+          <span class="micro format-pill-row">
+            <span class="fmt-pill">WAV · RIFF + ID3v2.3</span>
+            <span class="fmt-pill">MP3 · ID3v2.3</span>
+            <span class="fmt-pill">FLAC · VORBIS + PICTURE</span>
+          </span>
+          <span class="micro lossless-seal">
+            ✳ ZERO RE-ENCODING — AUDIO FRAMES PRESERVED BIT-FOR-BIT
+          </span>
+        </div>
+      </section>
+
+      <!-- ================= ACTIVE STUDIO WORKSPACE ================= -->
+      <div id="studio-workspace" class="hidden">
+        <!-- Dark Hardware Active Track & Live Preview Deck -->
+        <section class="studio-deck" id="studio-deck" data-state="paused" aria-label="Active track and audio preview">
+          <div class="deck-head">
+            <div class="deck-id">
+              <span class="deck-led" aria-hidden="true"></span>
+              <span class="deck-label">SEAL DECK // ACTIVE MASTER</span>
+              <span class="deck-sub-id" id="deck-format-readout">WAV · RIFF + ID3v2.3</span>
+            </div>
+            <div class="deck-head-right">
+              <span class="deck-state" id="deck-state-pill">READY</span>
+            </div>
+          </div>
+
+          <div class="deck-track-bar">
+            <div class="deck-track-identity">
+              <div class="deck-title-row">
+                <span class="deck-format-stamp micro" id="deck-format-stamp">WAV</span>
+                <h2 class="deck-filename" id="deck-filename">untitled.wav</h2>
+              </div>
+              <div class="deck-specs-row" id="deck-specs-row"></div>
+            </div>
+
+            <div class="deck-quick-actions">
+              <button type="button" id="btn-autofill-filename" class="deck-pill-btn" title="Parse Artist & Title from the filename">
+                Fill From Filename
+              </button>
+              <button type="button" id="btn-sg-defaults" class="deck-pill-btn" title="Stamp Saint Gordon Collective artist, label, and copyright defaults">
+                Saint Gordon Stamp
+              </button>
+              <button type="button" id="btn-strip-all" class="deck-pill-btn deck-pill-danger" title="Clear all tags and embedded cover art">
+                Strip All Metadata
+              </button>
+            </div>
+          </div>
+
+          <!-- Live Audio Preview Transport -->
+          <div class="deck-preview-bar">
+            <button type="button" id="btn-preview-play" class="deck-pill-btn deck-pill-primary">
+              <span id="preview-play-glyph" aria-hidden="true">▶</span>
+              <span id="preview-play-label">Audition Track</span>
+            </button>
+
+            <span class="time-readout micro" id="preview-time-cur">00:00</span>
+            <input
+              type="range"
+              id="preview-seek"
+              class="deck-scrubber"
+              min="0"
+              max="100"
+              step="0.1"
+              value="0"
+              aria-label="Audio preview playback position"
+            />
+            <span class="time-readout micro" id="preview-time-dur">00:00</span>
+
+            <label class="deck-volume" for="preview-volume">
+              <span class="micro">VOL</span>
+              <input
+                type="range"
+                id="preview-volume"
+                min="0"
+                max="1"
+                step="0.01"
+                value="0.85"
+                aria-label="Audio preview volume"
+              />
+            </label>
+          </div>
+        </section>
+
+        <!-- Primary Two-Column Workspace: Cover Art Studio + Key Track Info -->
+        <div class="workspace-grid">
+          <!-- LEFT COLUMN: COVER ART STUDIO -->
+          <aside class="sg-card art-studio-card" aria-labelledby="art-studio-heading">
+            <div class="card-header-bar">
+              <div>
+                <span class="micro card-kicker">01 / COVER ART STUDIO</span>
+                <h2 id="art-studio-heading" class="card-title">Embedded Artwork</h2>
+              </div>
+              <span class="micro art-status-tag" id="art-status-tag">EMPTY</span>
+            </div>
+
+            <!-- Square Artwork Stage & Dropzone -->
+            <div
+              class="art-stage"
+              id="art-dropzone"
+              tabindex="0"
+              role="button"
+              aria-label="Drop or click to upload cover art image"
+            >
+              <img id="art-preview-img" class="art-preview-img hidden" alt="Embedded cover art preview" />
+              <div id="art-empty-state" class="art-empty-state">
+                <span class="art-crosshair" aria-hidden="true">╋</span>
+                <span class="micro">NO COVER ART EMBEDDED</span>
+                <p class="art-empty-hint">
+                  Drop JPG, PNG, WebP, GIF, or BMP here — or click to choose cover artwork.
+                </p>
+              </div>
+              <div class="art-drag-overlay micro" aria-hidden="true">DROP IMAGE TO EMBED</div>
+            </div>
+
+            <!-- Embedded Specs Bar -->
+            <div class="art-specs-bar micro" id="art-specs-bar">
+              <span id="art-dim-pill">NO IMAGE</span>
+              <span id="art-fmt-pill">—</span>
+              <span id="art-size-pill">0 KB</span>
+            </div>
+
+            <!-- Art Primary Buttons -->
+            <div class="art-actions-row">
+              <button type="button" id="btn-upload-art" class="sg-btn sg-btn-ink sg-btn-sm">
+                Upload Cover Art
+              </button>
+              <button type="button" id="btn-extract-art" class="sg-btn sg-btn-outline sg-btn-sm" disabled>
+                Extract Art ↓
+              </button>
+              <button type="button" id="btn-remove-art" class="sg-btn sg-btn-ghost sg-btn-sm" disabled>
+                Remove
+              </button>
+            </div>
+
+            <!-- Artwork Preparation Controls -->
+            <div class="art-controls-block">
+              <div class="field-group">
+                <label for="art-resolution" class="field-label micro">Target Resolution</label>
+                <select id="art-resolution" class="sg-select">
+                  <option value="original">Keep Original</option>
+                  <option value="1400">1400 × 1400 px (Standard Cover)</option>
+                  <option value="3000">3000 × 3000 px (Hi-Res Release)</option>
+                  <option value="800">800 × 800 px (Compact)</option>
+                </select>
+              </div>
+
+              <div class="art-two-col">
+                <div class="field-group">
+                  <label for="art-format" class="field-label micro">Embed Format</label>
+                  <select id="art-format" class="sg-select">
+                    <option value="image/jpeg">JPEG (92% — smaller)</option>
+                    <option value="image/png">PNG (Lossless)</option>
+                  </select>
+                </div>
+
+                <div class="field-group">
+                  <label for="art-pic-type" class="field-label micro">Picture Type</label>
+                  <select id="art-pic-type" class="sg-select"></select>
+                </div>
+              </div>
+
+              <!-- 1-Click Saint Gordon Xerox Filter -->
+              <div class="xerox-box">
+                <label class="sg-toggle" for="toggle-xerox">
+                  <input type="checkbox" id="toggle-xerox" class="sr-only" disabled />
+                  <span class="sg-toggle-track" aria-hidden="true"></span>
+                  <span class="sg-toggle-text">
+                    <strong>Saint Gordon Xerox Filter</strong>
+                    <span class="xerox-sub micro">REC.709 · THRESHOLD 105 · GRAIN 60</span>
+                  </span>
+                </label>
+
+                <button
+                  type="button"
+                  id="btn-revert-art"
+                  class="sg-btn sg-btn-outline sg-btn-sm hidden"
+                >
+                  ↺ Revert to Original Art
+                </button>
+              </div>
+
+              <p class="art-note" id="art-auto-note">
+                WebP, GIF, and BMP uploads are automatically converted to JPEG/PNG for universal playback across Finder, Apple Music, Rekordbox, Serato, and VLC.
+              </p>
+            </div>
+          </aside>
+
+          <!-- RIGHT COLUMN: KEY TRACK INFO -->
+          <section class="sg-card key-info-card" aria-labelledby="key-info-heading">
+            <div class="card-header-bar">
+              <div>
+                <span class="micro card-kicker">02 / KEY TRACK INFO</span>
+                <h2 id="key-info-heading" class="card-title">Release &amp; Song Metadata</h2>
+              </div>
+              <span class="micro unsaved-indicator hidden" id="unsaved-indicator">● EDITED</span>
+            </div>
+
+            <!-- WAV Dual-Tag Sync Switch -->
+            <div id="wav-sync-banner" class="wav-sync-banner hidden">
+              <label class="sg-toggle" for="toggle-wav-sync">
+                <input type="checkbox" id="toggle-wav-sync" class="sr-only" checked />
+                <span class="sg-toggle-track" aria-hidden="true"></span>
+                <span class="sg-toggle-text">
+                  <strong>Sync RIFF INFO &amp; ID3v2 automatically</strong>
+                  <span class="wav-sync-sub">
+                    Writes both consumer <code>LIST(INFO)</code> and rich <code>ID3v2.3</code> so Finder, DAWs, DJ gear, and Apple Music all display your tags.
+                  </span>
+                </span>
+              </label>
+            </div>
+
+            <form id="metadata-form" class="meta-form" autocomplete="off">
+              <div class="form-grid">
+                <div class="field-group span-2">
+                  <label for="tag-title" class="field-label micro">
+                    Title <span class="frame-code">TIT2 / INAM</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="tag-title"
+                    class="sg-input sg-input-lg"
+                    placeholder="e.g. Midnight Horizon"
+                  />
+                </div>
+
+                <div class="field-group">
+                  <label for="tag-artist" class="field-label micro">
+                    Lead Artist <span class="frame-code">TPE1 / IART</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="tag-artist"
+                    class="sg-input"
+                    placeholder="e.g. Saint Gordon"
+                  />
+                </div>
+
+                <div class="field-group">
+                  <label for="tag-album-artist" class="field-label micro">
+                    Album Artist <span class="frame-code">TPE2</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="tag-album-artist"
+                    class="sg-input"
+                    placeholder="e.g. Saint Gordon Collective"
+                  />
+                </div>
+
+                <div class="field-group">
+                  <label for="tag-album" class="field-label micro">
+                    Album / Single <span class="frame-code">TALB / IPRD</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="tag-album"
+                    class="sg-input"
+                    placeholder="e.g. Midnight Horizon - Single"
+                  />
+                </div>
+
+                <div class="field-group">
+                  <label for="tag-year" class="field-label micro">
+                    Year / Release Date <span class="frame-code">TYER / ICRD</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="tag-year"
+                    class="sg-input"
+                    placeholder="2026 or 2026-11-24"
+                  />
+                </div>
+
+                <div class="field-group">
+                  <label for="tag-track" class="field-label micro">
+                    Track # <span class="frame-code">TRCK / ITRK</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="tag-track"
+                    class="sg-input"
+                    placeholder="e.g. 1/10"
+                  />
+                </div>
+
+                <div class="field-group">
+                  <label for="tag-genre" class="field-label micro">
+                    Genre <span class="frame-code">TCON / IGNR</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="tag-genre"
+                    class="sg-input"
+                    list="genre-suggestions"
+                    placeholder="e.g. Electronic / Alternative"
+                  />
+                  <datalist id="genre-suggestions">
+                    <option value="Alternative"></option>
+                    <option value="Ambient"></option>
+                    <option value="Afrobeats"></option>
+                    <option value="Drum & Bass"></option>
+                    <option value="Electronic"></option>
+                    <option value="Experimental"></option>
+                    <option value="Funk"></option>
+                    <option value="Garage"></option>
+                    <option value="Hip-Hop"></option>
+                    <option value="House"></option>
+                    <option value="Indie"></option>
+                    <option value="Indie Rock"></option>
+                    <option value="Industrial"></option>
+                    <option value="Jazz"></option>
+                    <option value="Lo-Fi"></option>
+                    <option value="Neo-Soul"></option>
+                    <option value="Pop"></option>
+                    <option value="Post-Punk"></option>
+                    <option value="R&B"></option>
+                    <option value="Rap"></option>
+                    <option value="Rock"></option>
+                    <option value="Shoegaze"></option>
+                    <option value="Soul"></option>
+                    <option value="Soundtrack"></option>
+                    <option value="Synthpop"></option>
+                    <option value="Techno"></option>
+                    <option value="Trap"></option>
+                    <option value="Trip-Hop"></option>
+                    <option value="UK Garage"></option>
+                  </datalist>
+                </div>
+
+                <div class="field-group">
+                  <label for="tag-bpm" class="field-label micro">
+                    BPM <span class="frame-code">TBPM / BPM</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="tag-bpm"
+                    inputmode="decimal"
+                    class="sg-input"
+                    placeholder="e.g. 124"
+                  />
+                </div>
+
+                <div class="field-group">
+                  <label for="tag-key" class="field-label micro">
+                    Musical Key <span class="frame-code">TKEY / INITIALKEY</span>
+                  </label>
+                  <div class="key-combo">
+                    <input
+                      type="text"
+                      id="tag-key"
+                      class="sg-input"
+                      placeholder="e.g. Am (8A)"
+                      aria-label="Musical Key"
+                    />
+                    <select
+                      id="key-preset-select"
+                      class="sg-select key-preset-select"
+                      aria-label="Choose musical key and Camelot notation"
+                    >
+                      <option value="">Key / Camelot ▾</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="field-group">
+                  <label for="tag-isrc" class="field-label micro">
+                    ISRC Code <span class="frame-code">TSRC / ISRC</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="tag-isrc"
+                    class="sg-input mono-input"
+                    placeholder="CC-XXX-YY-NNNNN"
+                    spellcheck="false"
+                  />
+                  <span class="field-hint micro" id="isrc-hint">FORMAT: CC-XXX-YY-NNNNN (12 CHARS)</span>
+                </div>
+
+                <div class="field-group">
+                  <label for="tag-publisher" class="field-label micro">
+                    Label / Publisher <span class="frame-code">TPUB / ORG</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="tag-publisher"
+                    class="sg-input"
+                    placeholder="e.g. Saint Gordon Collective"
+                  />
+                </div>
+
+                <div class="field-group">
+                  <label for="tag-composer" class="field-label micro">
+                    Composer / Producer <span class="frame-code">TCOM</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="tag-composer"
+                    class="sg-input"
+                    placeholder="e.g. Bryn Gordon"
+                  />
+                </div>
+
+                <div class="field-group">
+                  <label for="tag-copyright" class="field-label micro">
+                    Copyright <span class="frame-code">TCOP / ICOP</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="tag-copyright"
+                    class="sg-input"
+                    placeholder="℗ & © 2026 Saint Gordon Collective"
+                  />
+                </div>
+
+                <div class="field-group span-2">
+                  <label for="tag-comment" class="field-label micro">
+                    Comment <span class="frame-code">COMM / ICMT</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="tag-comment"
+                    class="sg-input"
+                    placeholder="e.g. 24-bit Master · Mixed at Saint Gordon Studio"
+                  />
+                </div>
+              </div>
+            </form>
+          </section>
+        </div>
+
+        <!-- ================= COLLAPSIBLE SECTIONS ================= -->
+        <div class="drawers-stack">
+          <!-- 03 / LYRICS -->
+          <details class="sg-card sg-drawer" id="drawer-lyrics">
+            <summary class="drawer-summary">
+              <div class="drawer-summary-left">
+                <span class="micro card-kicker">03 / LYRICS</span>
+                <span class="drawer-title">Unsynced Lyrics (USLT / LYRICS)</span>
+              </div>
+              <div class="drawer-summary-right micro">
+                <span id="lyrics-count-badge">0 LINES · 0 WORDS</span>
+                <span class="drawer-caret" aria-hidden="true">+</span>
+              </div>
+            </summary>
+
+            <div class="drawer-body">
+              <div class="lyrics-toolbar">
+                <div class="field-group lyrics-lang-group">
+                  <label for="tag-lyrics-lang" class="field-label micro">Language (ISO-639-2)</label>
+                  <input
+                    type="text"
+                    id="tag-lyrics-lang"
+                    class="sg-input mono-input"
+                    value="eng"
+                    maxlength="3"
+                    placeholder="eng"
+                  />
+                </div>
+                <span class="micro lyrics-live-stats" id="lyrics-live-stats">0 LINES · 0 WORDS · 0 CHARS</span>
+              </div>
+              <textarea
+                id="tag-lyrics"
+                class="sg-textarea"
+                rows="8"
+                placeholder="Paste song lyrics here to embed inside the audio file..."
+                aria-label="Unsynced lyrics"
+              ></textarea>
+            </div>
+          </details>
+
+          <!-- 04 / EXTENDED CREDITS & LINKS -->
+          <details class="sg-card sg-drawer" id="drawer-extended">
+            <summary class="drawer-summary">
+              <div class="drawer-summary-left">
+                <span class="micro card-kicker">04 / EXTENDED CREDITS &amp; LINKS</span>
+                <span class="drawer-title">Mix Version, Lyricist, Disc #, Mood, Engineer &amp; URL</span>
+              </div>
+              <div class="drawer-summary-right micro">
+                <span id="extended-filled-badge">0 SET</span>
+                <span class="drawer-caret" aria-hidden="true">+</span>
+              </div>
+            </summary>
+
+            <div class="drawer-body">
+              <div class="form-grid">
+                <div class="field-group">
+                  <label for="tag-subtitle" class="field-label micro">
+                    Subtitle / Mix Version <span class="frame-code">TIT3 / SUBTITLE</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="tag-subtitle"
+                    class="sg-input"
+                    placeholder="e.g. Extended Club Mix / Instrumental"
+                  />
+                </div>
+
+                <div class="field-group">
+                  <label for="tag-lyricist" class="field-label micro">
+                    Lyricist / Writer <span class="frame-code">TEXT / LYRICIST</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="tag-lyricist"
+                    class="sg-input"
+                    placeholder="e.g. Bryn Gordon"
+                  />
+                </div>
+
+                <div class="field-group">
+                  <label for="tag-disc" class="field-label micro">
+                    Disc # <span class="frame-code">TPOS / DISCNUMBER</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="tag-disc"
+                    class="sg-input"
+                    placeholder="e.g. 1/1"
+                  />
+                </div>
+
+                <div class="field-group">
+                  <label for="tag-mood" class="field-label micro">
+                    Mood <span class="frame-code">TMOO / MOOD</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="tag-mood"
+                    class="sg-input"
+                    placeholder="e.g. Dark, Driving, Atmospheric"
+                  />
+                </div>
+
+                <div class="field-group">
+                  <label for="tag-engineer" class="field-label micro">
+                    Engineer <span class="frame-code">IENG / ENGINEER</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="tag-engineer"
+                    class="sg-input"
+                    placeholder="e.g. Mastering Engineer"
+                  />
+                </div>
+
+                <div class="field-group">
+                  <label for="tag-encoded-by" class="field-label micro">
+                    Encoded By <span class="frame-code">TENC / ENCODED-BY</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="tag-encoded-by"
+                    class="sg-input"
+                    placeholder="e.g. Saint Gordon Studio"
+                  />
+                </div>
+
+                <div class="field-group">
+                  <label for="tag-artist-url" class="field-label micro">
+                    Official Artist URL <span class="frame-code">WOAR / WEBSITE</span>
+                  </label>
+                  <input
+                    type="url"
+                    id="tag-artist-url"
+                    class="sg-input"
+                    placeholder="https://saintgordon.vercel.app"
+                  />
+                </div>
+
+                <div class="field-group">
+                  <label for="tag-software" class="field-label micro">
+                    Software <span class="frame-code">TSSE / ISFT</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="tag-software"
+                    class="sg-input"
+                    placeholder="e.g. Saint Gordon Tag & Seal"
+                  />
+                </div>
+              </div>
+            </div>
+          </details>
+
+          <!-- 05 / TECHNICAL INSPECTOR -->
+          <details class="sg-card sg-drawer" id="drawer-tech">
+            <summary class="drawer-summary">
+              <div class="drawer-summary-left">
+                <span class="micro card-kicker">05 / TECHNICAL INSPECTOR</span>
+                <span class="drawer-title">Container Specs, Chunks &amp; Lossless Audio Checksum</span>
+              </div>
+              <div class="drawer-summary-right micro">
+                <span id="tech-summary-badge">—</span>
+                <span class="drawer-caret" aria-hidden="true">+</span>
+              </div>
+            </summary>
+
+            <div class="drawer-body">
+              <div class="tech-grid" id="tech-specs-grid"></div>
+              <div class="chunks-section">
+                <span class="micro field-label">DETECTED CONTAINER CHUNKS / BLOCKS</span>
+                <div class="chunks-list" id="tech-chunks-list"></div>
+              </div>
+            </div>
+          </details>
+        </div>
+
+        <!-- ================= 06 / SEAL & DOWNLOAD ================= -->
+        <section class="sg-card seal-card" aria-labelledby="seal-heading">
+          <div class="seal-top">
+            <div class="seal-filename-col">
+              <span class="micro card-kicker">06 / SEAL &amp; EXPORT</span>
+              <h2 id="seal-heading" class="card-title">Seal Lossless Master</h2>
+
+              <div class="filename-row">
+                <div class="field-group filename-input-wrap">
+                  <label for="output-filename" class="field-label micro">Output Filename</label>
+                  <input
+                    type="text"
+                    id="output-filename"
+                    class="sg-input mono-input"
+                    spellcheck="false"
+                  />
+                </div>
+                <div class="filename-presets" role="group" aria-label="Filename presets">
+                  <button type="button" id="btn-name-original" class="seg-btn active">Original</button>
+                  <button type="button" id="btn-name-artist-title" class="seg-btn">Artist - Title</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="seal-cta-col">
+              <p class="seal-guarantee micro">
+                ✳ AUDIO STREAM NEVER RE-ENCODED — BINARY VERIFIED ON SEAL
+              </p>
+              <button type="button" id="btn-seal-download" class="paper-button">
+                <span id="seal-btn-label">Seal &amp; Download WAV ↓</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Post-Seal Byte-Level Verification Report -->
+          <div id="seal-verification-banner" class="seal-verification hidden" role="status" aria-live="polite">
+            <div class="seal-verif-head micro">
+              <span id="seal-verif-badge">✓ SEALED &amp; BYTE-VERIFIED</span>
+              <span id="seal-verif-checksum">AUDIO CHECKSUM: —</span>
+            </div>
+            <p id="seal-verif-summary" class="seal-verif-text"></p>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <!-- Saint Gordon Collective Footer -->
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <div class="footer-brand">Saint Gordon Collective</div>
+        <div class="footer-nav">
+          <a href="https://saintgordon.vercel.app" target="_blank" rel="noopener noreferrer">
+            Saint Gordon Home ↗
+          </a>
+          <a href="https://saintgordon.vercel.app/collection.html" target="_blank" rel="noopener noreferrer">
+            The Collection ↗
+          </a>
+          <a href="https://github.com/Firewallaby/tag-and-seal" target="_blank" rel="noopener noreferrer">
+            Tag &amp; Seal on GitHub ↗
+          </a>
+        </div>
+        <div class="footer-meta micro">
+          <span>© <span id="footer-year">2026</span> SAINT GORDON COLLECTIVE</span>
+          <span>INDEPENDENT SOUND. IMPERFECT BY DESIGN.</span>
+          <span>100% CLIENT-SIDE LOSSLESS ENGINE</span>
+        </div>
+      </div>
+    </footer>
+
+    <!-- Global Toast Notifications -->
+    <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>
