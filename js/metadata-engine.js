@@ -1400,16 +1400,23 @@ function parseId3v1(bytes) {
 
 function findMp3AudioStart(bytes) {
   let offset = 0;
-  // Support stacked ID3v2 headers gracefully
+  // Support stacked ID3v2 headers gracefully while guarding against corrupt header lengths
   while (offset + 10 <= bytes.length && readAscii(bytes, offset, 3) === 'ID3') {
     const major = bytes[offset + 3];
     const flags = bytes[offset + 5];
     const size = readSyncsafe32(bytes, offset + 6);
     const hasFooter = major === 4 && (flags & 0x10) !== 0;
     const span = 10 + size + (hasFooter ? 10 : 0);
-    if (span <= 10 || offset + span > bytes.length) {
-      offset = Math.min(bytes.length, offset + span);
+    if (span < 10) {
       break;
+    }
+    if (offset + span > bytes.length) {
+      // Malformed/truncated ID3v2 size: locate first valid MPEG sync rather than dropping audio
+      const rescued = findFirstMpegFrame(bytes, offset + 10);
+      if (rescued) {
+        return rescued.offset;
+      }
+      throw new Error('Corrupted ID3v2 header exceeds file length; refusing to modify audio stream.');
     }
     offset += span;
   }
@@ -1960,6 +1967,19 @@ function formatChannelLabel(channels) {
   return 'Unknown';
 }
 
+function hasConsecutiveMpegFrames(bytes, startOffset = 0) {
+  const limit = Math.min(bytes.length - 4, startOffset + 65536);
+  for (let i = startOffset; i <= limit; i++) {
+    const hdr = parseMpegHeaderAt(bytes, i);
+    if (!hdr) continue;
+    const nextPos = i + hdr.frameLength;
+    if (nextPos === bytes.length || (nextPos + 4 <= bytes.length && parseMpegHeaderAt(bytes, nextPos))) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export function detectAudioFormat(input, fileName = '') {
   const bytes = toUint8Array(input);
   if (bytes.length >= 12 && (readAscii(bytes, 0, 4) === 'RIFF' || readAscii(bytes, 0, 4) === 'RF64') && readAscii(bytes, 8, 4) === 'WAVE') {
@@ -1967,6 +1987,17 @@ export function detectAudioFormat(input, fileName = '') {
   }
   if (bytes.length >= 4 && readAscii(bytes, 0, 4) === 'fLaC') {
     return 'FLAC';
+  }
+  // Explicitly reject other known non-WAV/MP3/FLAC containers (AIFF, Ogg/Opus, MP4/M4A)
+  // so random 0xFF bytes inside them are never misidentified as raw MPEG frames.
+  if (bytes.length >= 12 && readAscii(bytes, 0, 4) === 'FORM' && (readAscii(bytes, 8, 4) === 'AIFF' || readAscii(bytes, 8, 4) === 'AIFC')) {
+    return null;
+  }
+  if (bytes.length >= 4 && readAscii(bytes, 0, 4) === 'OggS') {
+    return null;
+  }
+  if (bytes.length >= 8 && readAscii(bytes, 4, 4) === 'ftyp') {
+    return null;
   }
   if (bytes.length >= 3 && readAscii(bytes, 0, 3) === 'ID3') {
     // Check if there is an fLaC marker right after an ID3v2 tag (rare non-standard FLAC)
@@ -1976,14 +2007,14 @@ export function detectAudioFormat(input, fileName = '') {
     }
     return 'MP3';
   }
-  if (bytes.length >= 4 && findFirstMpegFrame(bytes, 0)) {
+  if (bytes.length >= 4 && hasConsecutiveMpegFrames(bytes, 0)) {
     return 'MP3';
   }
 
   const ext = (fileName || '').toLowerCase().split('.').pop();
   if (ext === 'wav') return 'WAV';
   if (ext === 'flac') return 'FLAC';
-  if (ext === 'mp3') return 'MP3';
+  if (ext === 'mp3' && bytes.length >= 4 && findFirstMpegFrame(bytes, 0)) return 'MP3';
   return null;
 }
 
@@ -2057,6 +2088,107 @@ export function extractAudioPayloadSlice(input) {
     return bytes.subarray(pos);
   }
   return new Uint8Array(0);
+}
+
+function bytesAreIdentical(a, b) {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+}
+
+function extractWavChunkMap(bytes) {
+  const map = new Map();
+  let pos = 12;
+  while (pos + 8 <= bytes.length) {
+    const id = readAscii(bytes, pos, 4);
+    const sz = readU32LE(bytes, pos + 4);
+    const dataStart = pos + 8;
+    const clamped = Math.min(sz, Math.max(0, bytes.length - dataStart));
+    const slice = bytes.subarray(dataStart, dataStart + clamped);
+    if (!map.has(id)) map.set(id, []);
+    map.get(id).push(slice);
+    pos = dataStart + sz + (sz & 1);
+  }
+  return map;
+}
+
+function extractFlacStreamInfo(bytes) {
+  let pos = bytes.length >= 3 && readAscii(bytes, 0, 3) === 'ID3' ? findMp3AudioStart(bytes) : 0;
+  if (pos + 4 > bytes.length || readAscii(bytes, pos, 4) !== 'fLaC') return null;
+  pos += 4;
+  while (pos + 4 <= bytes.length) {
+    const b0 = bytes[pos];
+    const isLast = (b0 & 0x80) !== 0;
+    const blockType = b0 & 0x7f;
+    const len = readU24BE(bytes, pos + 1);
+    const start = pos + 4;
+    if (start + len > bytes.length) return null;
+    if (blockType === 0) return bytes.subarray(start, start + len);
+    pos = start + len;
+    if (isLast) break;
+  }
+  return null;
+}
+
+/**
+ * Strictly verify bit-for-bit audio & codec header preservation between original and sealed bytes.
+ * Compares EVERY byte of the audio stream (not just a hash) plus WAV `fmt `/`fact`/`bext` or FLAC `STREAMINFO`.
+ */
+export function verifyLosslessAudio(originalInput, sealedInput) {
+  const orig = toUint8Array(originalInput);
+  const sealed = toUint8Array(sealedInput);
+  const origFormat = detectAudioFormat(orig);
+  const sealedFormat = detectAudioFormat(sealed);
+
+  if (!origFormat || origFormat !== sealedFormat) {
+    return {
+      ok: false,
+      reason: `Container format changed unexpectedly (${origFormat || 'unknown'} -> ${sealedFormat || 'unknown'}).`,
+    };
+  }
+
+  const origAudio = extractAudioPayloadSlice(orig);
+  const sealedAudio = extractAudioPayloadSlice(sealed);
+
+  if (!bytesAreIdentical(origAudio, sealedAudio)) {
+    return {
+      ok: false,
+      reason: `Audio payload bytes differ (${origAudio.length} B vs ${sealedAudio.length} B).`,
+    };
+  }
+
+  if (origFormat === 'WAV') {
+    const origChunks = extractWavChunkMap(orig);
+    const sealedChunks = extractWavChunkMap(sealed);
+    for (const criticalId of ['fmt ', 'fact', 'data', 'bext', 'iXML', 'smpl', 'cue ']) {
+      const aList = origChunks.get(criticalId) || [];
+      const bList = sealedChunks.get(criticalId) || [];
+      if (aList.length !== bList.length) {
+        return { ok: false, reason: `WAV "${criticalId}" chunk count changed.` };
+      }
+      for (let i = 0; i < aList.length; i++) {
+        if (!bytesAreIdentical(aList[i], bList[i])) {
+          return { ok: false, reason: `WAV "${criticalId}" chunk bytes were altered.` };
+        }
+      }
+    }
+  } else if (origFormat === 'FLAC') {
+    const origSi = extractFlacStreamInfo(orig);
+    const sealedSi = extractFlacStreamInfo(sealed);
+    if (!origSi || !sealedSi || !bytesAreIdentical(origSi, sealedSi)) {
+      return { ok: false, reason: 'FLAC STREAMINFO (sample specs & PCM MD5) was altered.' };
+    }
+  }
+
+  const checksum = checksumBytes(sealedAudio);
+  return {
+    ok: true,
+    format: origFormat,
+    audioByteLength: sealedAudio.length,
+    checksum,
+  };
 }
 
 /**

@@ -13,6 +13,7 @@ import {
   formatSampleRate,
   parseAudioFile,
   sealAudioFile,
+  verifyLosslessAudio,
 } from './metadata-engine.js';
 import { createArtworkSource, processArtwork } from './artwork-processor.js';
 
@@ -852,16 +853,14 @@ function sealAndDownload() {
       stripAll,
     });
 
-    // Self-verify bit-for-bit preservation of the audio payload
-    const afterAudioSlice = extractAudioPayloadSlice(result.bytes);
-    const afterChecksum = checksumBytes(afterAudioSlice);
-    const audioMatch =
-      afterAudioSlice.length === state.originalAudioLength &&
-      afterChecksum === state.originalAudioChecksum;
-
-    if (!audioMatch) {
-      throw new Error('Internal verification failed: audio payload checksum mismatch.');
+    // Self-verify exact bit-for-bit preservation of every audio sample & codec header byte
+    const verification = verifyLosslessAudio(state.originalBytes, result.bytes);
+    if (!verification.ok || verification.checksum !== state.originalAudioChecksum) {
+      throw new Error(
+        `Internal verification failed: ${verification.reason || 'audio payload checksum mismatch.'}`
+      );
     }
+    const afterChecksum = verification.checksum;
 
     // Re-parse sealed output to confirm clean container integrity
     const ext = getFileExtension(state.doc.format);

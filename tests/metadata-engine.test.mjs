@@ -11,6 +11,7 @@ import {
   parseAudioFile,
   parseId3v2,
   sealAudioFile,
+  verifyLosslessAudio,
 } from '../js/metadata-engine.js';
 import { applySaintGordonXerox } from '../js/artwork-processor.js';
 
@@ -654,4 +655,57 @@ test('Saint Gordon Xerox filter outputs deterministic 1-bit Rec.709 monochrome p
     assert.equal(imageData.data[i + 2], v);
     assert.equal(imageData.data[i + 3], 255);
   }
+});
+
+test('verifyLosslessAudio guarantees 100% bit-for-bit audio & codec header preservation and catches 1-bit tampering', () => {
+  const tags = makeRichUnicodeTags();
+  const coverJpg = makeFakeJpeg(1400, 1400, 320);
+
+  // 1. WAV (including odd-length 24-bit PCM data chunk + IEEE Float fact chunk)
+  const { wav } = makeSyntheticWav();
+  const sealedWav = sealAudioFile(wav, tags, [{ data: coverJpg, mime: 'image/jpeg', picType: 3 }]);
+  const wavCheck = verifyLosslessAudio(wav, sealedWav.bytes);
+  assert.equal(wavCheck.ok, true);
+
+  // Flip 1 single bit inside sealed WAV PCM payload -> must fail immediately
+  const tamperedWav = sealedWav.bytes.slice();
+  const wavAudioSlice = extractAudioPayloadSlice(tamperedWav);
+  wavAudioSlice[Math.floor(wavAudioSlice.length / 2)] ^= 0x01;
+  assert.equal(verifyLosslessAudio(wav, tamperedWav).ok, false);
+
+  // Odd-length 24-bit mono PCM (3003 bytes) round-trip
+  const oddPcm = new Uint8Array(3003);
+  for (let i = 0; i < oddPcm.length; i++) oddPcm[i] = (i * 41 + 9) & 0xff;
+  const fmtMono24 = concat([u16LE(1), u16LE(1), u32LE(48000), u32LE(144000), u16LE(3), u16LE(24)]);
+  const oddBody = concat([
+    ascii('WAVE'),
+    ascii('fmt '), u32LE(fmtMono24.length), fmtMono24,
+    ascii('data'), u32LE(oddPcm.length), oddPcm, new Uint8Array([0]),
+  ]);
+  const oddWav = concat([ascii('RIFF'), u32LE(oddBody.length), oddBody]);
+  const sealedOddWav = sealAudioFile(oddWav, tags, []);
+  assert.equal(verifyLosslessAudio(oddWav, sealedOddWav.bytes).ok, true);
+  assert.deepEqual(extractAudioPayloadSlice(sealedOddWav.bytes), oddPcm);
+
+  // 2. MP3
+  const { mp3 } = makeSyntheticMp3();
+  const sealedMp3 = sealAudioFile(mp3, tags, [{ data: coverJpg, mime: 'image/jpeg', picType: 3 }]);
+  assert.equal(verifyLosslessAudio(mp3, sealedMp3.bytes).ok, true);
+  const tamperedMp3 = sealedMp3.bytes.slice();
+  tamperedMp3[tamperedMp3.length - 10] ^= 0x01;
+  assert.equal(verifyLosslessAudio(mp3, tamperedMp3).ok, false);
+
+  // 3. FLAC (verifies STREAMINFO MD5 + frames)
+  const { flac } = makeSyntheticFlac();
+  const sealedFlac = sealAudioFile(flac, tags, [{ data: coverJpg, mime: 'image/jpeg', picType: 3 }]);
+  assert.equal(verifyLosslessAudio(flac, sealedFlac.bytes).ok, true);
+  const tamperedFlac = sealedFlac.bytes.slice();
+  tamperedFlac[tamperedFlac.length - 10] ^= 0x01;
+  assert.equal(verifyLosslessAudio(flac, tamperedFlac).ok, false);
+
+  // 4. Reject non-supported containers (MP4/M4A, Ogg, AIFF) even if containing 0xFF 0xFB bytes
+  const fakeM4a = concat([u32BE(24), ascii('ftypM4A '), new Uint8Array([0xff, 0xfb, 0xb0, 0x00, 0, 0, 0, 0, 0, 0, 0, 0])]);
+  assert.equal(detectAudioFormat(fakeM4a, 'song.mp3'), null);
+  const fakeAiff = concat([ascii('FORM'), u32BE(32), ascii('AIFF'), new Uint8Array([0xff, 0xfb, 0xb0, 0x00, 0, 0, 0, 0])]);
+  assert.equal(detectAudioFormat(fakeAiff, 'song.aiff'), null);
 });
