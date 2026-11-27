@@ -854,7 +854,10 @@ function sealAndDownload() {
     });
 
     // Self-verify exact bit-for-bit preservation of every audio sample & codec header byte
-    const verification = verifyLosslessAudio(state.originalBytes, result.bytes);
+    const verification = verifyLosslessAudio(state.originalBytes, result.bytes, {
+      format: state.doc.format,
+      fileName: state.originalFileName,
+    });
     if (!verification.ok || verification.checksum !== state.originalAudioChecksum) {
       throw new Error(
         `Internal verification failed: ${verification.reason || 'audio payload checksum mismatch.'}`

@@ -34,7 +34,7 @@
   --deck-bg: radial-gradient(120% 140% at 0% 0%, #262626 0%, #141414 55%, #0b0b0b 100%);
   --deck-card: #161616;
   --deck-ink: #f2f2f2;
-  --deck-dim: #9a9a9a;
+  --deck-dim: #b8b8b8;
   --deck-rule: #333333;
 
   --font-display: "Engravers Old English", Relic, Georgia, serif;
@@ -227,11 +227,12 @@ p {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 7px 13px;
-  border: 1px solid var(--ink);
-  background: var(--paper-bright);
+  padding: 6px 11px;
+  border: 1px dashed var(--rule-soft);
+  background: var(--paper-tint);
+  color: var(--ink-soft);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -1167,11 +1168,17 @@ p {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 22px 28px;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  padding: 20px 24px;
   cursor: pointer;
   list-style: none;
   user-select: none;
+}
+
+.drawer-summary-left {
+  min-width: 0;
+  flex: 1 1 220px;
 }
 
 .drawer-summary::-webkit-details-marker {
@@ -1183,6 +1190,7 @@ p {
 }
 
 .drawer-title {
+  display: block;
   font-size: 1.05rem;
   font-weight: 800;
   letter-spacing: -0.02em;
@@ -1191,9 +1199,11 @@ p {
 .drawer-summary-right {
   display: inline-flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   color: var(--ink-muted);
   flex-shrink: 0;
+  margin-left: auto;
+  padding-right: 4px;
 }
 
 .drawer-caret {
@@ -1205,6 +1215,7 @@ p {
   color: var(--ink);
   font-size: 14px;
   line-height: 1;
+  flex-shrink: 0;
   transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease;
 }
 
@@ -1549,7 +1560,22 @@ p {
   }
 
   .drawer-summary {
-    padding: 18px;
+    padding: 16px 18px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .drawer-summary-left {
+    flex: none;
+    width: 100%;
+  }
+
+  .drawer-summary-right {
+    width: 100%;
+    justify-content: space-between;
+    margin-left: 0;
+    padding-right: 6px;
   }
 
   .drawer-body {

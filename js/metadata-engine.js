@@ -1969,11 +1969,16 @@ function formatChannelLabel(channels) {
 
 function hasConsecutiveMpegFrames(bytes, startOffset = 0) {
   const limit = Math.min(bytes.length - 4, startOffset + 65536);
+  const id3v1Offset = parseId3v1(bytes) !== null ? bytes.length - 128 : bytes.length;
   for (let i = startOffset; i <= limit; i++) {
     const hdr = parseMpegHeaderAt(bytes, i);
     if (!hdr) continue;
     const nextPos = i + hdr.frameLength;
-    if (nextPos === bytes.length || (nextPos + 4 <= bytes.length && parseMpegHeaderAt(bytes, nextPos))) {
+    if (
+      nextPos === bytes.length ||
+      nextPos === id3v1Offset ||
+      (nextPos + 4 <= bytes.length && parseMpegHeaderAt(bytes, nextPos))
+    ) {
       return true;
     }
   }
@@ -2136,11 +2141,12 @@ function extractFlacStreamInfo(bytes) {
  * Strictly verify bit-for-bit audio & codec header preservation between original and sealed bytes.
  * Compares EVERY byte of the audio stream (not just a hash) plus WAV `fmt `/`fact`/`bext` or FLAC `STREAMINFO`.
  */
-export function verifyLosslessAudio(originalInput, sealedInput) {
+export function verifyLosslessAudio(originalInput, sealedInput, options = {}) {
   const orig = toUint8Array(originalInput);
   const sealed = toUint8Array(sealedInput);
-  const origFormat = detectAudioFormat(orig);
-  const sealedFormat = detectAudioFormat(sealed);
+  const fileName = options.fileName || '';
+  const origFormat = options.format || detectAudioFormat(orig, fileName);
+  const sealedFormat = detectAudioFormat(sealed, fileName);
 
   if (!origFormat || origFormat !== sealedFormat) {
     return {
